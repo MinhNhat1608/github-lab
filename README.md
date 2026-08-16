@@ -1,5 +1,5 @@
-# GitHub Lab
+## Branching Lab
 
-This repository was created for the GitHub Sign Up and Create Repository Lab.
+This file was edited in the readme-edits branch.
 
-Author: Minh Nhật
+Learning GitHub Branching and Merging.
