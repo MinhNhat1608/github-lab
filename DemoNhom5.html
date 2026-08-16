@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Demo NoSQL Injection</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f6fb;
+      color: #1f2937;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 24px auto;
+      padding: 0 16px 32px;
+    }
+    .hero, .card {
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    }
+    .hero {
+      padding: 24px;
+      margin-bottom: 18px;
+    }
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+    }
+    .hero p {
+      margin: 0;
+      line-height: 1.6;
+      color: #4b5563;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    .card {
+      padding: 20px;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 21px;
+    }
+    h3 {
+      margin: 0 0 10px;
+      font-size: 17px;
+    }
+    .small {
+      font-size: 13px;
+      color: #6b7280;
+    }
+    .label {
+      display: block;
+      margin: 12px 0 6px;
+      font-weight: 700;
+    }
+    select, textarea, button {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      padding: 12px;
+      font-size: 15px;
+      font-family: inherit;
+    }
+    textarea {
+      min-height: 190px;
+      resize: vertical;
+      background: #fafafa;
+    }
+    .btns {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+    button {
+      cursor: pointer;
+      border: none;
+      font-weight: 700;
+    }
+    .btn-main { background: #2563eb; color: #fff; }
+    .btn-gray { background: #e5e7eb; color: #111827; }
+    .btn-red { background: #dc2626; color: #fff; }
+    .btn-green { background: #059669; color: #fff; }
+    .btn-dark { background: #374151; color: #fff; }
+    .result {
+      background: #111827;
+      color: #e5e7eb;
+      border-radius: 14px;
+      padding: 14px;
+      min-height: 230px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: Consolas, monospace;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .pill {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    .blue { background: #dbeafe; color: #1d4ed8; }
+    .green { background: #dcfce7; color: #166534; }
+    .red { background: #fee2e2; color: #991b1b; }
+    .amber { background: #fef3c7; color: #92400e; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      padding: 10px;
+    }
+    .tips {
+      background: #eff6ff;
+      color: #1e3a8a;
+      padding: 12px 14px;
+      border-radius: 12px;
+      line-height: 1.6;
+      margin-top: 12px;
+    }
+    .warn {
+      background: #fff7ed;
+      color: #9a3412;
+      padding: 12px 14px;
+      border-radius: 12px;
+      line-height: 1.6;
+      margin-top: 12px;
+    }
+    .list {
+      margin: 8px 0 0 18px;
+      color: #374151;
+      line-height: 1.7;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      .btns { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <h1>Web demo NoSQL Injection</h1>
+      <p>
+        Demo này bám theo đúng bối cảnh: website đăng nhập dùng <b>NodeJS + MongoDB</b>,
+        backend có phiên bản <b>lỗi bảo mật</b> và phiên bản <b>đã fix</b> để so sánh.
+        Mục tiêu là giúp bạn quay video thuyết trình dễ hơn, nhìn trực quan hơn, và bám sát từng bước trong kịch bản.
+      </p>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>1) Khu vực demo request</h2>
+
+        <label class="label">Chế độ backend</label>
+        <select id="mode">
+          <option value="unsafe">Unsafe backend (bị lỗi bảo mật)</option>
+          <option value="safe">Safe backend (đã fix)</option>
+        </select>
+
+        <label class="label">Chọn API</label>
+        <select id="apiSelect">
+          <option value="login">/login</option>
+          <option value="search">/search</option>
+        </select>
+
+        <label class="label">Request JSON</label>
+        <textarea id="payload"></textarea>
+
+        <div class="btns">
+          <button class="btn-gray" onclick="loadLoginNormal()">B1. Đăng nhập bình thường</button>
+          <button class="btn-red" onclick="loadBypass()">B2. Bypass login</button>
+          <button class="btn-dark" onclick="loadAdmin()">B3. Nhắm tài khoản admin</button>
+          <button class="btn-gray" onclick="loadSearchDump()">B4. Search lấy nhiều dữ liệu</button>
+          <button class="btn-dark" onclick="loadRegex()">B5. Regex injection</button>
+          <button class="btn-red" onclick="loadWhere()">B6. Điều kiện nguy hiểm</button>
+          <button class="btn-main" onclick="runDemo()">Gửi request</button>
+          <button class="btn-green" onclick="loadSafeLogin()">Tải request hợp lệ để test bản fix</button>
+        </div>
+
+        <div class="tips">
+          <b>Thứ tự quay nên dùng:</b><br>
+          B1 → B2 → B3 → B4 → B5 → B6, sau đó đổi sang <b>Safe backend</b> và gửi lại B2 hoặc B3 để so sánh.
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>2) Kết quả trả về</h2>
+        <div id="badges"></div>
+        <div class="result" id="result">Chưa có request nào được gửi.</div>
+        <div class="warn">
+          Đây là <b>mô phỏng học thuật an toàn</b>. Web này chỉ minh hoạ hậu quả của việc backend tin input người dùng quá sớm.
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>3) Dữ liệu giả lập trong database</h2>
+        <h3>Collection: users</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>username</th>
+              <th>password</th>
+              <th>role</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>user1</td><td>123456</td><td>user</td></tr>
+            <tr><td>admin</td><td>admin123</td><td>admin</td></tr>
+          </tbody>
+        </table>
+
+        <h3 style="margin-top:16px;">Collection: products</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>name</th>
+              <th>price</th>
+              <th>category</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Mouse</td><td>150</td><td>accessory</td></tr>
+            <tr><td>Keyboard</td><td>300</td><td>accessory</td></tr>
+            <tr><td>Laptop</td><td>1500</td><td>device</td></tr>
+          </tbody>
+        </table>
+        <p class="small">Dữ liệu chỉ phục vụ demo bài thuyết trình.</p>
+      </div>
+
+      <div class="card">
+        <h2>4) Ý chính để nói khi demo</h2>
+        <ul class="list">
+          <li>NoSQL là nhóm cơ sở dữ liệu linh hoạt, MongoDB là dạng document database.</li>
+          <li>Lỗi xuất hiện khi backend dùng trực tiếp dữ liệu từ <code>req.body</code> để query.</li>
+          <li>Nếu không validate, input có thể không còn là string bình thường mà trở thành điều kiện truy vấn.</li>
+          <li>Hậu quả có thể là bypass login, truy cập nhầm tài khoản admin, hoặc trả ra quá nhiều dữ liệu.</li>
+          <li>Bản fix phải ép kiểu, validate input, sanitize, và không cho object đi thẳng vào query.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const users = [
+      { username: 'user1', password: '123456', role: 'user' },
+      { username: 'admin', password: 'admin123', role: 'admin' }
+    ];
+
+    const products = [
+      { name: 'Mouse', price: 150, category: 'accessory' },
+      { name: 'Keyboard', price: 300, category: 'accessory' },
+      { name: 'Laptop', price: 1500, category: 'device' }
+    ];
+
+    function setPayload(obj) {
+      document.getElementById('payload').value = JSON.stringify(obj, null, 2);
+    }
+
+    function loadLoginNormal() {
+      document.getElementById('apiSelect').value = 'login';
+      setPayload({ username: 'user1', password: '123456' });
+    }
+
+    function loadBypass() {
+      document.getElementById('apiSelect').value = 'login';
+      setPayload({ username: { '$ne': null }, password: { '$ne': null } });
+    }
+
+    function loadAdmin() {
+      document.getElementById('apiSelect').value = 'login';
+      setPayload({ username: 'admin', password: { '$ne': null } });
+    }
+
+    function loadSearchDump() {
+      document.getElementById('apiSelect').value = 'search';
+      setPayload({ price: { '$gt': 0 } });
+    }
+
+    function loadRegex() {
+      document.getElementById('apiSelect').value = 'login';
+      setPayload({ username: { '$regex': '.*' }, password: { '$regex': '.*' } });
+    }
+
+    function loadWhere() {
+      document.getElementById('apiSelect').value = 'login';
+      setPayload({ '$where': "this.role == 'admin'" });
+    }
+
+    function loadSafeLogin() {
+      document.getElementById('apiSelect').value = 'login';
+      setPayload({ username: 'user1', password: '123456' });
+    }
+
+    function badge(mode, kind, text) {
+      const color = kind === 'ok' ? 'green' : kind === 'warn' ? 'amber' : kind === 'bad' ? 'red' : 'blue';
+      return `<span class="pill ${color}">${text}</span>`;
+    }
+
+    function setBadges(mode, api, outcome) {
+      const el = document.getElementById('badges');
+      el.innerHTML = [
+        badge(mode, mode === 'unsafe' ? 'bad' : 'ok', mode.toUpperCase()),
+        badge(api, 'blue', api.toUpperCase()),
+        badge(outcome, outcome === 'accepted' ? 'ok' : outcome === 'blocked' ? 'bad' : 'warn', outcome === 'accepted' ? 'REQUEST ĐƯỢC CHẤP NHẬN' : outcome === 'blocked' ? 'REQUEST BỊ CHẶN' : 'KẾT QUẢ MỞ RỘNG')
+      ].join('');
+    }
+
+    function isObject(v) {
+      return typeof v === 'object' && v !== null && !Array.isArray(v);
+    }
+
+    function matchesUnsafe(fieldValue, queryValue) {
+      if (typeof queryValue === 'string' || typeof queryValue === 'number') {
+        return fieldValue === queryValue;
+      }
+      if (isObject(queryValue)) {
+        if ('$ne' in queryValue) return fieldValue !== queryValue['$ne'];
+        if ('$regex' in queryValue) {
+          try {
+            return new RegExp(queryValue['$regex']).test(String(fieldValue));
+          } catch {
+            return false;
+          }
+        }
+        if ('$gt' in queryValue) return fieldValue > queryValue['$gt'];
+        return true;
+      }
+      return false;
+    }
+
+    function loginUnsafe(payload) {
+      if ('$where' in payload) {
+        return {
+          ok: true,
+          message: 'Điều kiện nguy hiểm được backend chấp nhận',
+          explanation: 'MongoDB có thể hiểu đây là một điều kiện truy vấn nguy hiểm nếu backend cho phép dữ liệu đi thẳng vào query.',
+          matchedUser: users.find(u => u.role === 'admin')
+        };
+      }
+
+      const user = users.find(u => {
+        const usernameOk = 'username' in payload ? matchesUnsafe(u.username, payload.username) : true;
+        const passwordOk = 'password' in payload ? matchesUnsafe(u.password, payload.password) : true;
+        return usernameOk && passwordOk;
+      });
+
+      if (user) {
+        return {
+          ok: true,
+          message: 'Đăng nhập thành công',
+          explanation: 'Do backend xử lý input không an toàn nên câu truy vấn bị nới lỏng.',
+          matchedUser: user
+        };
+      }
+
+      return {
+        ok: false,
+        message: 'Sai tài khoản hoặc mật khẩu',
+        explanation: 'Không tìm thấy user phù hợp.'
+      };
+    }
+
+    function loginSafe(payload) {
+      if (typeof payload.username !== 'string' || typeof payload.password !== 'string') {
+        return {
+          ok: false,
+          message: 'Invalid input',
+          explanation: 'Backend chỉ chấp nhận username/password là string bình thường.'
+        };
+      }
+
+      const user = users.find(u => u.username === payload.username && u.password === payload.password);
+      if (user) {
+        return {
+          ok: true,
+          message: 'Đăng nhập thành công',
+          explanation: 'Input hợp lệ và khớp đúng dữ liệu trong database.',
+          matchedUser: user
+        };
+      }
+
+      return {
+        ok: false,
+        message: 'Sai tài khoản hoặc mật khẩu',
+        explanation: 'Thông tin đăng nhập không đúng.'
+      };
+    }
+
+    function searchUnsafe(payload) {
+      const result = products.filter(p => {
+        if ('price' in payload && isObject(payload.price) && '$gt' in payload.price) {
+          return p.price > payload.price['$gt'];
+        }
+        return true;
+      });
+
+      return {
+        ok: true,
+        message: 'Trả về dữ liệu từ /search',
+        explanation: 'Do backend dùng thẳng req.body trong find() nên điều kiện do người dùng gửi lên được chấp nhận.',
+        data: result
+      };
+    }
+
+    function searchSafe(payload) {
+      if (!('name' in payload) && !('category' in payload)) {
+        return {
+          ok: false,
+          message: 'Invalid search input',
+          explanation: 'Bản safe chỉ cho phép tìm kiếm theo các trường text đã được định nghĩa trước.'
+        };
+      }
+
+      const result = products.filter(p => {
+        let ok = true;
+        if ('name' in payload) ok = ok && typeof payload.name === 'string' && p.name === payload.name;
+        if ('category' in payload) ok = ok && typeof payload.category === 'string' && p.category === payload.category;
+        return ok;
+      });
+
+      return {
+        ok: true,
+        message: 'Kết quả tìm kiếm hợp lệ',
+        explanation: 'Backend chỉ dùng các trường đã kiểm soát sẵn.',
+        data: result
+      };
+    }
+
+    function runDemo() {
+      const mode = document.getElementById('mode').value;
+      const api = document.getElementById('apiSelect').value;
+      const resultEl = document.getElementById('result');
+      let payload;
+
+      try {
+        payload = JSON.parse(document.getElementById('payload').value);
+      } catch (e) {
+        setBadges(mode, api, 'blocked');
+        resultEl.textContent = 'JSON không hợp lệ. Bạn cần sửa request trước khi gửi.';
+        return;
+      }
+
+      let response;
+      if (api === 'login') {
+        response = mode === 'unsafe' ? loginUnsafe(payload) : loginSafe(payload);
+      } else {
+        response = mode === 'unsafe' ? searchUnsafe(payload) : searchSafe(payload);
+      }
+
+      const outcome = response.ok ? (api === 'search' && response.data ? 'expanded' : 'accepted') : 'blocked';
+      setBadges(mode, api, outcome);
+
+      resultEl.textContent = JSON.stringify({
+        request: payload,
+        response
+      }, null, 2);
+    }
+
+    loadLoginNormal();
+  </script>
+</body>
+</html>
